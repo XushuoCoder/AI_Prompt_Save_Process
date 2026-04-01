@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 提示词实验室 v2.2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <aside id="sidebar" class="w-full md:w-64 bg-gray-800 text-white transition-all duration-300 flex-shrink-0">
+            <div class="p-6 border-b border-gray-700">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <i class="fas fa-flask text-blue-400"></i>
+                    提示词实验室
+                </h2>
+            </div>
+            <nav class="p-4">
+                <h3 class="text-gray-400 text-sm font-semibold mb-3 uppercase tracking-wider">提示词分类</h3>
+                <ul id="categoryList" class="space-y-2">
+                    <li>
+                        <button onclick="filterCategory('all')" class="category-btn w-full text-left px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors flex items-center gap-3" data-category="all">
+                            <i class="fas fa-th-large"></i>
+                            <span>全部</span>
+                            <span id="count-all" class="ml-auto bg-gray-600 px-2 py-0.5 rounded-full text-xs">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="filterCategory('编程')" class="category-btn w-full text-left px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-3" data-category="编程">
+                            <i class="fas fa-code text-green-400"></i>
+                            <span>编程</span>
+                            <span id="count-编程" class="ml-auto bg-gray-600 px-2 py-0.5 rounded-full text-xs">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="filterCategory('文案')" class="category-btn w-full text-left px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-3" data-category="文案">
+                            <i class="fas fa-pen-fancy text-purple-400"></i>
+                            <span>文案</span>
+                            <span id="count-文案" class="ml-auto bg-gray-600 px-2 py-0.5 rounded-full text-xs">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button onclick="filterCategory('数据分析')" class="category-btn w-full text-left px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-3" data-category="数据分析">
+                            <i class="fas fa-chart-line text-yellow-400"></i>
+                            <span>数据分析</span>
+                            <span id="count-数据分析" class="ml-auto bg-gray-600 px-2 py-0.5 rounded-full text-xs">0</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="flex-1 bg-gray-100 flex flex-col h-screen overflow-hidden">
+            <header class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex-shrink-0">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-center gap-4 flex-1">
+                        <button onclick="toggleSidebar()" class="md:hidden text-gray-600">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <div class="relative w-full max-w-md">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="搜索标题或内容..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <button onclick="triggerImport()" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-lg text-sm border border-gray-300 hover:border-blue-600 transition-all flex items-center gap-2">
+                            <i class="fas fa-file-import"></i> 导入 Excel
+                        </button>
+                        <button onclick="exportToExcel()" class="text-gray-600 hover:text-green-600 px-3 py-2 rounded-lg text-sm border border-gray-300 hover:border-green-600 transition-all flex items-center gap-2">
+                            <i class="fas fa-file-export"></i> 导出 Excel
+                        </button>
+                        <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-md transition-all flex items-center gap-2">
+                            <i class="fas fa-plus"></i> 新建
+                        </button>
+                        <input type="file" id="excelInput" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-6 flex-1 overflow-y-auto">
+                <div id="cardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+                <div id="emptyState" class="hidden text-center py-20 text-gray-400">
+                    <i class="fas fa-folder-open text-5xl mb-4"></i>
+                    <p>没有找到匹配的提示词</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-lg font-bold">新建提示词</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="text" id="promptTitle" placeholder="标题" class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                <select id="promptCategory" class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="编程">编程</option>
+                    <option value="文案">文案</option>
+                    <option value="数据分析">数据分析</option>
+                </select>
+                <textarea id="promptContent" rows="6" placeholder="内容..." class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg">取消</button>
+                <button onclick="savePrompt()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg opacity-0 transition-all duration-300 pointer-events-none translate-y-10"></div>
+
+    <script>
+        // --- 数据逻辑 ---
+        let prompts = JSON.parse(localStorage.getItem('aiPrompts')) || [
+            { id: 1, title: "Python代码专家", category: "编程", content: "请优化以下代码...", updatedAt: Date.now() },
+            { id: 2, title: "日报生成器", category: "文案", content: "根据以下内容生成周报...", updatedAt: Date.now() }
+        ];
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let editingId = null;
+
+        // --- 核心功能：人性化时间 ---
+        function formatTime(timestamp) {
+            if (!timestamp) return "时间未知";
+            const now = Date.now();
+            const diff = (now - timestamp) / 1000;
+            if (diff < 60) return "刚刚";
+            if (diff < 3600) return Math.floor(diff / 60) + "分钟前";
+            if (diff < 86400) return Math.floor(diff / 3600) + "小时前";
+            const d = new Date(timestamp);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        // --- 核心功能：Excel 导入导出 ---
+        function triggerImport() {
+            document.getElementById('excelInput').click();
+        }
+
+        // 【新增：导入逻辑】
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // 将 Excel 转为 JSON 数组
+                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                // 数据清洗与格式转换
+                const importedData = json.map(row => ({
+                    id: Date.now() + Math.random(), // 生成临时唯一ID
+                    title: row["标题"] || "未命名提示词",
+                    category: row["分类"] || "文案",
+                    content: row["提示词内容"] || "",
+                    updatedAt: Date.now()
+                })).filter(item => item.content !== ""); // 过滤掉空内容
+
+                if (importedData.length > 0) {
+                    prompts = [...importedData, ...prompts];
+                    saveData();
+                    showToast(`成功导入 ${importedData.length} 条数据`);
+                } else {
+                    showToast("未发现有效数据", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = ""; // 重置 input 以便下次选择同一文件
+        }
+
+        // 【新增：导出逻辑】
+        function exportToExcel() {
+            if (prompts.length === 0) return showToast("库里还没有内容可导出", "error");
+
+            const exportData = prompts.map(p => ({
+                "标题": p.title,
+                "分类": p.category,
+                "提示词内容": p.content,
+                "最后修改时间": formatTime(p.updatedAt)
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "提示词库");
+            XLSX.writeFile(wb, `Prompt库_${new Date().toLocaleDateString()}.xlsx`);
+            showToast("Excel 文件已生成并下载");
+        }
+
+        // --- UI 渲染逻辑 ---
+        function renderCards() {
+            const container = document.getElementById('cardsContainer');
+            const empty = document.getElementById('emptyState');
+            
+            const filtered = prompts.filter(p => {
+                const matchCat = currentFilter === 'all' || p.category === currentFilter;
+                const matchSearch = p.title.toLowerCase().includes(searchQuery) || p.content.toLowerCase().includes(searchQuery);
+                return matchCat && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = "";
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+                container.innerHTML = filtered.map(p => `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all flex flex-col h-72 overflow-hidden group">
+                        <div class="p-5 flex-1 overflow-hidden relative">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 uppercase tracking-tighter">${p.category}</span>
+                                <div class="hidden group-hover:flex gap-1">
+                                    <button onclick="editPrompt(${p.id})" class="p-1.5 text-gray-400 hover:text-blue-600"><i class="fas fa-edit text-xs"></i></button>
+                                    <button onclick="deletePrompt(${p.id})" class="p-1.5 text-gray-400 hover:text-red-600"><i class="fas fa-trash text-xs"></i></button>
+                                </div>
+                            </div>
+                            <h3 class="font-bold text-gray-800 mb-2 truncate">${escapeHtml(p.title)}</h3>
+                            <p class="text-gray-500 text-xs line-clamp-4 leading-relaxed">${escapeHtml(p.content)}</p>
+                            
+                            <div class="absolute bottom-2 left-0 right-0 text-center text-[10px] text-gray-300 italic">
+                                <i class="far fa-clock mr-1"></i>${formatTime(p.updatedAt)}
+                            </div>
+                        </div>
+                        <div class="p-4 bg-gray-50/50 border-t border-gray-100">
+                            <button onclick="copyContent('${p.id}')" class="w-full py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all flex items-center justify-center gap-2">
+                                <i class="fas fa-copy"></i> 复制指令
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            updateCounts();
+        }
+
+        // --- 基础辅助功能 ---
+        function saveData() {
+            localStorage.setItem('aiPrompts', JSON.stringify(prompts));
+            renderCards();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            renderCards();
+        }
+
+        function filterCategory(cat) {
+            currentFilter = cat;
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.dataset.category === cat ? btn.classList.add('bg-gray-700') : btn.classList.remove('bg-gray-700');
+            });
+            renderCards();
+        }
+
+        function savePrompt() {
+            const title = document.getElementById('promptTitle').value.trim();
+            const category = document.getElementById('promptCategory').value;
+            const content = document.getElementById('promptContent').value.trim();
+            
+            if(!title || !content) return showToast("请填写完整", "error");
+
+            if(editingId) {
+                const idx = prompts.findIndex(p => p.id === editingId);
+                prompts[idx] = { ...prompts[idx], title, category, content, updatedAt: Date.now() };
+                editingId = null;
+            } else {
+                prompts.unshift({ id: Date.now(), title, category, content, updatedAt: Date.now() });
+            }
+            saveData();
+            closeModal();
+            showToast("保存成功");
+        }
+
+        function deletePrompt(id) {
+            if(confirm("确定删除吗？")) {
+                prompts = prompts.filter(p => p.id !== id);
+                saveData();
+                showToast("已删除");
+            }
+        }
+
+        function editPrompt(id) {
+            const p = prompts.find(x => x.id === id);
+            editingId = id;
+            document.getElementById('modalTitle').textContent = "编辑提示词";
+            document.getElementById('promptTitle').value = p.title;
+            document.getElementById('promptCategory').value = p.category;
+            document.getElementById('promptContent').value = p.content;
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        function copyContent(id) {
+            const p = prompts.find(x => x.id == id);
+            navigator.clipboard.writeText(p.content).then(() => showToast("已复制到剪贴板"));
+        }
+
+        function updateCounts() {
+            document.getElementById('count-all').innerText = prompts.length;
+            ['编程', '文案', '数据分析'].forEach(cat => {
+                document.getElementById(`count-${cat}`).innerText = prompts.filter(p => p.category === cat).length;
+            });
+        }
+
+        function openModal() {
+            editingId = null;
+            document.getElementById('modalTitle').textContent = "新建提示词";
+            document.getElementById('promptForm')?.reset();
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('modal').classList.remove('flex');
+        }
+
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.className = `fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 z-50 ${type === 'error' ? 'bg-red-600' : 'bg-gray-800'} text-white opacity-100 translate-y-0`;
+            setTimeout(() => { t.classList.add('opacity-0', 'translate-y-10'); }, 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('hidden');
+        }
+
+        // 初始化
+        renderCards();
+    </script>
+</body>
+</html>

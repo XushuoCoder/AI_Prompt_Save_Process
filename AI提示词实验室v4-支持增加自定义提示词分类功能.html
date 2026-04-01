@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 提示词实验室 v2.7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <aside id="sidebar" class="w-full md:w-64 bg-gray-800 text-white flex-shrink-0">
+            <div class="p-6 border-b border-gray-700">
+                <h2 class="text-xl font-bold flex items-center gap-2"><i class="fas fa-flask text-blue-400"></i>提示词实验室</h2>
+            </div>
+            <nav class="p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-400 text-xs font-semibold uppercase tracking-widest">分类管理</h3>
+                    <button onclick="openCategoryModal()" class="text-blue-400 hover:text-white text-sm"><i class="fas fa-plus-circle"></i></button>
+                </div>
+                <ul id="categoryList" class="space-y-1"></ul>
+            </nav>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-screen overflow-hidden">
+            <header class="bg-white shadow-sm border-b px-6 py-4 flex items-center justify-between">
+                <div class="relative w-full max-w-md">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    <input type="text" id="searchInput" oninput="handleSearch()" placeholder="搜索标题、内容、分类..." class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button onclick="openModal()" class="ml-4 px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg transition-all">新建提示词</button>
+            </header>
+
+            <div class="p-6 flex-1 overflow-y-auto">
+                <div id="cardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="catModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-xl w-full max-w-sm p-6 shadow-2xl">
+            <h3 id="catModalTitle" class="text-lg font-bold mb-4 text-gray-800">新增分类</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">分类名称</label>
+                    <input type="text" id="newCatName" placeholder="如：小艺助手" class="w-full px-3 py-2 border rounded-lg outline-none focus:border-blue-500 text-gray-700">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 mb-2">点击图标快速选择</label>
+                    <div class="grid grid-cols-6 gap-2 mb-3" id="iconPresets"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="newCatIcon" placeholder="或输入 fa-xxx" oninput="previewIcon()" class="flex-1 px-3 py-2 border rounded-lg text-sm outline-none">
+                        <div class="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg text-blue-600 shadow-inner"><i id="iconPreview" class="fas fa-tag"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="closeCatModal()" class="px-4 py-2 text-gray-400 hover:text-gray-600 transition-colors">取消</button>
+                <button onclick="saveCategory()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all">保存分类</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="variableModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[70] p-4">
+        <div class="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl">
+            <h3 class="text-lg font-bold mb-2">完善提示词变量</h3>
+            <div id="variableFields" class="space-y-4 mt-4"></div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="closeVariableModal()" class="px-4 py-2 text-gray-400">取消</button>
+                <button id="confirmCopyBtn" class="px-6 py-2 bg-green-600 text-white rounded-lg font-bold">生成并复制</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl w-full max-w-lg shadow-2xl overflow-hidden p-6 space-y-4">
+            <h3 id="modalTitle" class="text-lg font-bold">编辑提示词</h3>
+            <input type="text" id="promptTitle" placeholder="标题" class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="promptCategory" class="w-full px-4 py-2 border rounded-lg outline-none"></select>
+            <textarea id="promptContent" rows="8" placeholder="内容..." class="w-full px-4 py-2 border rounded-lg outline-none resize-none"></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-400">取消</button>
+                <button onclick="savePrompt()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-xl opacity-0 transition-all duration-300 pointer-events-none translate-y-10 z-[100]"></div>
+
+    <script>
+        // --- 初始化数据 ---
+        let prompts = JSON.parse(localStorage.getItem('aiPrompts')) || [];
+        let rawCats = JSON.parse(localStorage.getItem('aiCategories')) || ['编程', '文案', '数据分析'];
+        // 确保分类始终是对象格式
+        let categories = rawCats.map(c => typeof c === 'string' ? {name: c, icon: 'fa-tag'} : c);
+        const PRESET_ICONS = ['fa-robot', 'fa-pen-nib', 'fa-code', 'fa-chart-bar', 'fa-language', 'fa-image', 'fa-lightbulb', 'fa-envelope', 'fa-graduation-cap', 'fa-briefcase', 'fa-comments', 'fa-heart'];
+
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let editingId = null;
+        let editingCatName = null; // 【关键】用于追踪正在编辑的分类名
+
+        // --- 分类管理逻辑 ---
+
+        function renderCategories() {
+            const list = document.getElementById('categoryList');
+            let html = `<li><button onclick="filterCategory('all')" class="w-full text-left px-4 py-2 rounded-lg ${currentFilter === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-700'} flex items-center justify-between transition-all"><span><i class="fas fa-border-all mr-2"></i>全部</span><span class="text-[10px] opacity-60">${prompts.length}</span></button></li>`;
+            
+            categories.forEach(cat => {
+                const count = prompts.filter(p => p.category === cat.name).length;
+                const isActive = currentFilter === cat.name;
+                html += `
+                <li class="group flex items-center">
+                    <button onclick="filterCategory('${cat.name}')" class="flex-1 text-left px-4 py-2 rounded-lg ${isActive ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-700'} flex items-center justify-between transition-all">
+                        <span><i class="fas ${cat.icon} mr-2 ${isActive ? 'text-white' : 'text-blue-400'}"></i>${cat.name}</span>
+                        <span class="text-[10px] opacity-60">${count}</span>
+                    </button>
+                    <div class="hidden group-hover:flex ml-1 gap-1">
+                        <button onclick="openCategoryModal('${cat.name}')" class="text-gray-500 hover:text-blue-400 p-1"><i class="fas fa-edit text-[10px]"></i></button>
+                        <button onclick="deleteCategory('${cat.name}')" class="text-gray-500 hover:text-red-400 p-1"><i class="fas fa-trash text-[10px]"></i></button>
+                    </div>
+                </li>`;
+            });
+            list.innerHTML = html;
+            document.getElementById('promptCategory').innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        }
+
+        function openCategoryModal(oldName = null) {
+            const modal = document.getElementById('catModal');
+            const title = document.getElementById('catModalTitle');
+            const nameInput = document.getElementById('newCatName');
+            const iconInput = document.getElementById('newCatIcon');
+
+            if(oldName) {
+                editingCatName = oldName;
+                const cat = categories.find(c => c.name === oldName);
+                title.innerText = "编辑分类";
+                nameInput.value = cat.name;
+                iconInput.value = cat.icon;
+            } else {
+                editingCatName = null;
+                title.innerText = "新增分类";
+                nameInput.value = "";
+                iconInput.value = "fa-tag";
+            }
+            
+            previewIcon();
+            renderIconPresets();
+            modal.classList.replace('hidden', 'flex');
+        }
+
+        function saveCategory() {
+            const newName = document.getElementById('newCatName').value.trim();
+            const newIcon = document.getElementById('newCatIcon').value || 'fa-tag';
+
+            if(!newName) return showToast("名称不能为空", "error");
+
+            if(editingCatName) {
+                // 【逻辑更新】如果是编辑旧分类
+                const idx = categories.findIndex(c => c.name === editingCatName);
+                
+                // 如果名字变了，更新所有提示词中的对应分类名
+                if(editingCatName !== newName) {
+                    prompts = prompts.map(p => p.category === editingCatName ? {...p, category: newName} : p);
+                    localStorage.setItem('aiPrompts', JSON.stringify(prompts));
+                    // 如果当前正在筛选这个分类，同步筛选名
+                    if(currentFilter === editingCatName) currentFilter = newName;
+                }
+
+                categories[idx] = { name: newName, icon: newIcon };
+                showToast("分类已更新");
+            } else {
+                // 新增逻辑
+                if(categories.some(c => c.name === newName)) return showToast("分类已存在", "error");
+                categories.push({ name: newName, icon: newIcon });
+                showToast("分类添加成功");
+            }
+
+            localStorage.setItem('aiCategories', JSON.stringify(categories));
+            renderCategories();
+            renderCards(); // 刷新卡片，防止分类名改变后显示错误
+            closeCatModal();
+        }
+
+        function deleteCategory(name) {
+            if(confirm(`确定删除“${name}”吗？此分类下的提示词将变为“未分类”。`)) {
+                categories = categories.filter(c => c.name !== name);
+                // 此时提示词不需要删除，只是它们以后匹配不到这个分类了
+                localStorage.setItem('aiCategories', JSON.stringify(categories));
+                if(currentFilter === name) currentFilter = 'all';
+                renderCategories();
+                renderCards();
+            }
+        }
+
+        // --- 其余核心代码（变量填充、卡片渲染等） ---
+        // (为了保持响应速度，这里沿用之前版本的逻辑，并在 savePrompt 中加入对 category 的处理)
+
+        function usePrompt(id) {
+            const p = prompts.find(x => x.id === id);
+            const regex = /\[(.*?)\]/g;
+            const matches = [...new Set(p.content.match(regex))];
+            if (matches.length > 0) {
+                const container = document.getElementById('variableFields');
+                container.innerHTML = matches.map(m => `<div><label class="block text-xs font-bold text-gray-400 mb-1">${m.slice(1,-1)}</label><input type="text" data-var="${m}" class="var-input w-full px-3 py-2 border rounded-lg outline-none focus:border-blue-500"></div>`).join('');
+                document.getElementById('variableModal').classList.replace('hidden', 'flex');
+                document.getElementById('confirmCopyBtn').onclick = () => {
+                    let final = p.content;
+                    document.querySelectorAll('.var-input').forEach(i => final = final.replaceAll(i.dataset.var, i.value || i.dataset.var));
+                    navigator.clipboard.writeText(final).then(() => { showToast("已生成并复制！"); closeVariableModal(); });
+                };
+            } else {
+                navigator.clipboard.writeText(p.content).then(() => showToast("已直接复制！"));
+            }
+        }
+
+        function renderCards() {
+            const filtered = prompts.filter(p => (currentFilter==='all' || p.category===currentFilter) && (p.title+p.content+p.category).toLowerCase().includes(searchQuery));
+            document.getElementById('cardsContainer').innerHTML = filtered.map(p => `
+                <div class="bg-white rounded-xl shadow-sm border p-5 flex flex-col h-72 group hover:shadow-xl transition-all relative">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-[10px] font-bold px-2 py-1 rounded bg-blue-50 text-blue-600">${p.category}</span>
+                        <div class="opacity-0 group-hover:opacity-100 flex gap-2">
+                            <button onclick="editPrompt(${p.id})" class="text-gray-300 hover:text-blue-500"><i class="fas fa-pen text-xs"></i></button>
+                            <button onclick="deletePrompt(${p.id})" class="text-gray-300 hover:text-red-500"><i class="fas fa-trash text-xs"></i></button>
+                        </div>
+                    </div>
+                    <h3 class="font-bold text-gray-800 mb-2 truncate">${p.title}</h3>
+                    <p class="text-xs text-gray-500 line-clamp-4 leading-relaxed flex-1">${p.content.replace(/\[/g, '<span class="text-blue-500 font-bold">[').replace(/\]/g, ']</span>')}</p>
+                    <button onclick="usePrompt(${p.id})" class="mt-4 w-full py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-bolt mr-1"></i> 使用并复制</button>
+                </div>
+            `).join('');
+            renderCategories();
+        }
+
+        // --- 工具函数 ---
+        function selectIcon(icon) { document.getElementById('newCatIcon').value = icon; previewIcon(); }
+        function previewIcon() { document.getElementById('iconPreview').className = `fas ${document.getElementById('newCatIcon').value || 'fa-tag'}`; }
+        function renderIconPresets() { document.getElementById('iconPresets').innerHTML = PRESET_ICONS.map(icon => `<button onclick="selectIcon('${icon}')" class="w-8 h-8 flex items-center justify-center rounded border hover:border-blue-500 text-gray-400 hover:text-blue-500"><i class="fas ${icon} text-xs"></i></button>`).join(''); }
+        function closeCatModal() { document.getElementById('catModal').classList.replace('flex', 'hidden'); }
+        function closeVariableModal() { document.getElementById('variableModal').classList.replace('flex', 'hidden'); }
+        function openModal() { editingId = null; document.getElementById('modalTitle').innerText = "新建提示词"; document.getElementById('promptTitle').value = ""; document.getElementById('promptContent').value = ""; document.getElementById('modal').classList.replace('hidden', 'flex'); }
+        function closeModal() { document.getElementById('modal').classList.replace('flex', 'hidden'); }
+        function editPrompt(id) { 
+            const p = prompts.find(x => x.id === id); editingId = id; 
+            document.getElementById('modalTitle').innerText = "编辑提示词";
+            document.getElementById('promptTitle').value = p.title; 
+            document.getElementById('promptCategory').value = p.category; 
+            document.getElementById('promptContent').value = p.content; 
+            openModal(); 
+        }
+        function savePrompt() {
+            const title = document.getElementById('promptTitle').value;
+            const category = document.getElementById('promptCategory').value;
+            const content = document.getElementById('promptContent').value;
+            if(editingId) {
+                const idx = prompts.findIndex(p => p.id === editingId);
+                prompts[idx] = {...prompts[idx], title, category, content, updatedAt: Date.now()};
+            } else {
+                prompts.unshift({id: Date.now(), title, category, content, updatedAt: Date.now()});
+            }
+            localStorage.setItem('aiPrompts', JSON.stringify(prompts)); renderCards(); closeModal();
+        }
+        function deletePrompt(id) { if(confirm("确定删除此提示词吗？")) { prompts = prompts.filter(p => p.id !== id); localStorage.setItem('aiPrompts', JSON.stringify(prompts)); renderCards(); } }
+        function handleSearch() { searchQuery = document.getElementById('searchInput').value.toLowerCase(); renderCards(); }
+        function filterCategory(cat) { currentFilter = cat; renderCards(); }
+        function showToast(msg, type='success') {
+            const t = document.getElementById('toast'); t.innerText = msg;
+            t.className = `fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-xl z-[100] ${type==='error'?'bg-red-600':'bg-gray-800'} text-white opacity-100 translate-y-0 transition-all`;
+            setTimeout(() => t.classList.add('opacity-0', 'translate-y-10'), 2000);
+        }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
+
+        renderCards();
+    </script>
+</body>
+</html>
