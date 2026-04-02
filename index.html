@@ -274,5 +274,22 @@
 
         renderCards();
     </script>
+	<script>
+        // 1. 检查浏览器是否支持 Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // 2. 注册 sw.js，注意这里的 ./ 对 GitHub Pages 非常重要
+                navigator.serviceWorker.register('./sw.js')
+                    .then(function(registration) {
+                        // 注册成功
+                        console.log('ServiceWorker 注册成功，作用域为: ', registration.scope);
+                    })
+                    .catch(function(err) {
+                        // 注册失败
+                        console.log('ServiceWorker 注册失败: ', err);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
