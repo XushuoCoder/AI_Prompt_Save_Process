@@ -1,6 +1,7 @@
 const CACHE_NAME = 'prompt-lab-v2.8';
 const ASSETS = [
-  'index.html',
+  './',
+  './index.html',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'
 ];
